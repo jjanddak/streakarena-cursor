@@ -5,8 +5,11 @@ import { getSessionId } from '@/lib/session';
 /**
  * POST /api/match
  * Body: { gameSlug: string }
- * Joins matchmaking queue: finds waiting session or creates one.
- * Returns the game_session row.
+ *
+ * 매칭 플로우:
+ * 1. 이 플레이어의 기존 waiting/playing 세션을 모두 cancelled 처리 (깨끗한 상태)
+ * 2. 다른 플레이어가 만든 waiting 세션이 있으면 합류
+ * 3. 없으면 새 waiting 세션 생성
  */
 export async function POST(req: NextRequest) {
   try {
@@ -41,22 +44,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Game not found' }, { status: 404 });
     }
 
-    // 3. Check if player is already in a waiting/playing session
-    const { data: existingSession } = await supabase
+    // 3. 기존 waiting/playing 세션 전부 취소 (좀비 세션 방지)
+    await supabase
       .from('game_sessions')
-      .select('*')
+      .update({ status: 'cancelled' })
       .eq('game_id', game.id)
       .in('status', ['waiting', 'playing'])
-      .or(`player1_id.eq.${player.id},player2_id.eq.${player.id}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .or(`player1_id.eq.${player.id},player2_id.eq.${player.id}`);
 
-    if (existingSession) {
-      return NextResponse.json({ session: existingSession });
-    }
-
-    // 4. Find a waiting session (not our own)
+    // 4. 다른 플레이어의 waiting 세션 찾기
     const { data: waitingSession } = await supabase
       .from('game_sessions')
       .select('*')
@@ -69,7 +65,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (waitingSession) {
-      // Join existing session
+      // 합류
       const { data: updated, error: updateErr } = await supabase
         .from('game_sessions')
         .update({
@@ -84,14 +80,17 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (updateErr || !updated) {
-        // Race condition: someone else took it, create new
+        // Race condition → 새 waiting 세션 생성
         return await createWaitingSession(supabase, game.id, player.id);
       }
 
-      return NextResponse.json({ session: updated });
+      return NextResponse.json({
+        session: updated,
+        partykitHost: process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? undefined,
+      });
     }
 
-    // 5. No waiting session found → create one
+    // 5. 대기 세션 없음 → 새로 생성
     return await createWaitingSession(supabase, game.id, player.id);
   } catch (err) {
     console.error('POST /api/match error:', err);
@@ -104,7 +103,7 @@ async function createWaitingSession(
   gameId: string,
   playerId: string
 ) {
-  // 이전에 이긴 세션의 연승을 가져와서 이어받기 (새 세션에서 연승이 1로만 보이는 버그 방지)
+  // 이전에 이긴 세션의 연승을 가져와서 이어받기
   const { data: lastWin } = await supabase
     .from('game_sessions')
     .select('current_streak')
@@ -131,5 +130,8 @@ async function createWaitingSession(
     .single();
 
   if (insertErr) throw insertErr;
-  return NextResponse.json({ session: newSession });
+  return NextResponse.json({
+    session: newSession,
+    partykitHost: process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? undefined,
+  });
 }

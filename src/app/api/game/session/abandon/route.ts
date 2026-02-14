@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionId } from '@/lib/session';
+import { broadcastSessionUpdate } from '@/lib/partykit';
 
 /**
  * POST /api/game/session/abandon
@@ -50,13 +51,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ cancelled: true });
     }
 
-    const { error: updateErr } = await supabase
+    const { data: updated, error: updateErr } = await supabase
       .from('game_sessions')
       .update({ status: 'cancelled' })
-      .eq('id', gameSessionId);
+      .eq('id', gameSessionId)
+      .select('*')
+      .single();
 
     if (updateErr) throw updateErr;
 
+    if (updated) {
+      await broadcastSessionUpdate(gameSessionId, updated as Record<string, unknown>);
+    }
     return NextResponse.json({ cancelled: true });
   } catch (err) {
     console.error('POST /api/game/session/abandon error:', err);

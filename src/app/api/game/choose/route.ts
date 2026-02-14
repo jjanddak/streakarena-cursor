@@ -1,21 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionId } from '@/lib/session';
-
-const VALID_CHOICES = ['rock', 'paper', 'scissors'] as const;
-type Choice = (typeof VALID_CHOICES)[number];
-
-function determineWinner(c1: Choice, c2: Choice): 'player1' | 'player2' | 'draw' {
-  if (c1 === c2) return 'draw';
-  if (
-    (c1 === 'rock' && c2 === 'scissors') ||
-    (c1 === 'scissors' && c2 === 'paper') ||
-    (c1 === 'paper' && c2 === 'rock')
-  ) {
-    return 'player1';
-  }
-  return 'player2';
-}
+import { broadcastSessionUpdate } from '@/lib/partykit';
+import { VALID_CHOICES, determineWinner } from '@/lib/rps';
+import type { RPSChoice } from '@/lib/rps';
 
 /**
  * POST /api/game/choose
@@ -88,7 +76,10 @@ export async function POST(req: NextRequest) {
 
     if (bothChosen) {
       // Resolve round
-      const result = determineWinner(updatedChoices.player1 as Choice, updatedChoices.player2 as Choice);
+      const result = determineWinner(
+        updatedChoices.player1 as RPSChoice,
+        updatedChoices.player2 as RPSChoice
+      );
 
       let winnerId: string | null = null;
       let newStreak = session.current_streak || 0;
@@ -96,7 +87,7 @@ export async function POST(req: NextRequest) {
       if (result === 'player1') {
         winnerId = session.player1_id;
         newStreak += 1;
-      } else       if (result === 'player2') {
+      } else if (result === 'player2') {
         winnerId = session.player2_id;
         newStreak = 1;
       }
@@ -111,7 +102,7 @@ export async function POST(req: NextRequest) {
       };
 
       const updateData: Record<string, unknown> = {
-        round_choices: updatedChoices,
+        round_choices: result === 'draw' ? {} : updatedChoices, // 무승부 시 다음 라운드를 위해 비우기
         round_result: roundResult,
         current_streak: newStreak,
       };
@@ -192,6 +183,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      await broadcastSessionUpdate(gameSessionId, updated as Record<string, unknown>);
       return NextResponse.json({ session: updated });
     }
 
@@ -204,6 +196,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (updateErr) throw updateErr;
+    await broadcastSessionUpdate(gameSessionId, updated as Record<string, unknown>);
     return NextResponse.json({ session: updated });
   } catch (err) {
     console.error('POST /api/game/choose error:', err);
