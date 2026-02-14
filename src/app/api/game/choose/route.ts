@@ -84,17 +84,18 @@ export async function POST(req: NextRequest) {
       );
 
       let winnerId: string | null = null;
-      let newStreak = session.current_streak || 0;
+      // 저장값: 승자가 있으면 "승자의 연승", 무승부면 0 (다음 매칭 시 참고용)
+      let newStreak: number;
 
       if (result === 'player1') {
         winnerId = session.player1_id;
-        newStreak += 1;
+        newStreak = (session.current_streak || 0) + 1;
       } else if (result === 'player2') {
         winnerId = session.player2_id;
-        // player2 승리 = player1(세션 주체) 패배 → 연승 0
-        newStreak = 0;
+        // player2 승리 → 이번 게임에서의 승자 연승은 1 (패/무승부 직후 첫 승이어도 1부터 시작)
+        newStreak = 1;
       } else {
-        // 무승부: 연승 초기화
+        // 무승부: 연승 초기화(패배와 동일). 다음 승리 시 1부터 시작하도록 0 저장
         newStreak = 0;
       }
 
