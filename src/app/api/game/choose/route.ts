@@ -91,7 +91,8 @@ export async function POST(req: NextRequest) {
         newStreak += 1;
       } else if (result === 'player2') {
         winnerId = session.player2_id;
-        newStreak = 1;
+        // player2 승리 = player1(세션 주체) 패배 → 연승 0
+        newStreak = 0;
       } else {
         // 무승부: 연승 초기화
         newStreak = 0;
@@ -124,8 +125,24 @@ export async function POST(req: NextRequest) {
 
       if (updateErr) throw updateErr;
 
-      // If there's a winner, record to rankings and update current_champion
-      if (result !== 'draw' && winnerId) {
+      // 현재 유저(요청자)가 이겼을 때만 랭킹 갱신. 상대는 본인 세션에서 갱신함.
+      if (result !== 'draw' && winnerId && winnerId === player.id) {
+        // 랭킹에 쓸 연승: player1이면 newStreak, player2면 현재 유저의 직전 연승+1
+        let streakForRanking = newStreak;
+        if (isPlayer2) {
+          const { data: myLast } = await supabase
+            .from('game_sessions')
+            .select('winner_id, current_streak')
+            .eq('game_id', session.game_id)
+            .eq('status', 'finished')
+            .or(`player1_id.eq.${player.id},player2_id.eq.${player.id}`)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .single();
+          const prev = myLast && myLast.winner_id === player.id ? (myLast.current_streak ?? 0) : 0;
+          streakForRanking = prev + 1;
+        }
+
         const { data: winnerPlayer } = await supabase
           .from('players')
           .select('nickname, country_flag')
@@ -141,11 +158,11 @@ export async function POST(req: NextRequest) {
             .eq('player_id', winnerId)
             .single();
 
-          if (existingRank && existingRank.streak_count < newStreak) {
+          if (existingRank && existingRank.streak_count < streakForRanking) {
             await supabase
               .from('rankings')
               .update({
-                streak_count: newStreak,
+                streak_count: streakForRanking,
                 player_name: winnerPlayer.nickname,
                 country_flag: winnerPlayer.country_flag,
                 achieved_at: new Date().toISOString(),
@@ -157,7 +174,7 @@ export async function POST(req: NextRequest) {
               player_id: winnerId,
               player_name: winnerPlayer.nickname,
               country_flag: winnerPlayer.country_flag,
-              streak_count: newStreak,
+              streak_count: streakForRanking,
             });
           }
 
