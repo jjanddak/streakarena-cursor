@@ -16,15 +16,40 @@
     "submitGame": "게임 제출",
     "admin": "관리자"
   },
+  "hero": {
+    "badge": "실시간 1:1 대전 플랫폼",
+    "titleLine1": "실력을 증명하고",
+    "titleLine2": "연승 기록을 세워라",
+    "description": "전 세계 플레이어와 실시간으로 대결하고, 최장 연승 기록에 도전하세요. 닉네임만 입력하면 바로 시작할 수 있습니다.",
+    "viewRankings": "랭킹 보기",
+    "statPlayers": "0",
+    "statPlayersLabel": "접속 중",
+    "statGames": "0",
+    "statGamesLabel": "오늘의 대전",
+    "statStreak": "0",
+    "statStreakLabel": "최고 연승"
+  },
   "home": {
     "title": "StreakArena.io",
     "subtitle": "글로벌 연승 도전",
     "currentChampion": "현재 챔피언",
     "noChampion": "아직 기록 없음",
+    "gameList": "게임 선택",
+    "gameListDesc": "도전할 게임을 선택하고 바로 플레이하세요",
     "waitingCount": "대기 중 {count}명",
     "pickNickname": "닉네임을 입력하세요",
     "nicknamePlaceholder": "닉네임 (2~20자)",
     "nicknameRequired": "게임을 시작하려면 닉네임이 필요합니다"
+  },
+  "features": {
+    "heading": "왜 StreakArena인가?",
+    "subheading": "간단하지만 중독적인 실시간 대전 경험",
+    "realtimeTitle": "실시간 매칭",
+    "realtimeDesc": "대기 시간 없이 즉시 상대를 만나 대결을 시작합니다. Supabase Realtime으로 밀리초 단위 동기화.",
+    "globalTitle": "글로벌 도전",
+    "globalDesc": "전 세계 어디에서든 접속하여 도전하세요. 국기와 함께 당신의 국가를 대표할 수 있습니다.",
+    "rankingsTitle": "연승 랭킹",
+    "rankingsDesc": "최고의 연승 기록을 세우고 랭킹에 이름을 올리세요. Top 100에 도전하세요."
   },
   "game": {
     "matching": "상대 찾는 중...",
@@ -65,5 +90,8 @@
     "reject": "반려",
     "noPending": "대기 중인 요청이 없습니다.",
     "unauthorized": "접근 권한이 없습니다."
+  },
+  "footer": {
+    "copyright": "© 2026 StreakArena. All rights reserved."
   }
 }

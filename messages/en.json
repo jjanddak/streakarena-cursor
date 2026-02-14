@@ -16,15 +16,40 @@
     "submitGame": "Submit Game",
     "admin": "Admin"
   },
+  "hero": {
+    "badge": "Real-time 1v1 Battle Platform",
+    "titleLine1": "Prove your skills,",
+    "titleLine2": "Set the streak record",
+    "description": "Challenge players worldwide in real-time battles and aim for the longest winning streak. Just enter a nickname to start.",
+    "viewRankings": "View Rankings",
+    "statPlayers": "0",
+    "statPlayersLabel": "Online",
+    "statGames": "0",
+    "statGamesLabel": "Battles today",
+    "statStreak": "0",
+    "statStreakLabel": "Best streak"
+  },
   "home": {
     "title": "StreakArena.io",
     "subtitle": "Global Streak Challenge",
     "currentChampion": "Current Champion",
     "noChampion": "No records yet",
+    "gameList": "Choose a game",
+    "gameListDesc": "Pick a game and start playing right away",
     "waitingCount": "{count} waiting",
     "pickNickname": "Enter your nickname",
     "nicknamePlaceholder": "Nickname (2-20 chars)",
     "nicknameRequired": "Nickname required to start"
+  },
+  "features": {
+    "heading": "Why StreakArena?",
+    "subheading": "Simple yet addictive real-time battle experience",
+    "realtimeTitle": "Real-time Matching",
+    "realtimeDesc": "Instantly find opponents with zero wait time. Millisecond-level sync powered by Supabase Realtime.",
+    "globalTitle": "Global Challenge",
+    "globalDesc": "Connect from anywhere in the world. Represent your country with your national flag.",
+    "rankingsTitle": "Streak Rankings",
+    "rankingsDesc": "Set the highest winning streak and put your name on the leaderboard. Aim for the Top 100."
   },
   "game": {
     "matching": "Finding opponent...",
@@ -65,5 +90,8 @@
     "reject": "Reject",
     "noPending": "No pending requests.",
     "unauthorized": "Unauthorized."
+  },
+  "footer": {
+    "copyright": "© 2026 StreakArena. All rights reserved."
   }
 }
