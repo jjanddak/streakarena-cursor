@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionId } from '@/lib/session';
+import { broadcastSessionUpdate } from '@/lib/partykit';
 
 /**
  * POST /api/match
@@ -84,6 +85,9 @@ export async function POST(req: NextRequest) {
         return await createWaitingSession(supabase, game.id, player.id);
       }
 
+      // ★ 대기 중인 Player 1에게 매칭 알림 (PartyKit broadcast)
+      await broadcastSessionUpdate(updated.id, updated as Record<string, unknown>);
+
       return NextResponse.json({
         session: updated,
         partykitHost: process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? undefined,
@@ -166,6 +170,9 @@ async function createWaitingSession(
         .from('game_sessions')
         .update({ status: 'cancelled' })
         .eq('id', newSession!.id);
+
+      // ★ 대기 중인 Player에게 매칭 알림 (PartyKit broadcast)
+      await broadcastSessionUpdate(joined.id, joined as Record<string, unknown>);
 
       return NextResponse.json({
         session: joined,

@@ -91,6 +91,7 @@ export function RPSGame() {
   const playerCheckRef = useRef(false);
   const matchingRef = useRef(false);
   const socketRef = useRef<PartySocket | null>(null);
+  const myChoiceRef = useRef<Choice | null>(null);
   const stateRef = useRef<GameState>(state);
   const sessionRef = useRef<GameSession | null>(session);
 
@@ -127,6 +128,7 @@ export function RPSGame() {
     setSession(null);
     setPartykitHost(null);
     setMyChoice(null);
+    myChoiceRef.current = null;
     setOpponentLeft(false);
     setError('');
     matchingRef.current = false; // 다음 매칭 허용
@@ -142,6 +144,7 @@ export function RPSGame() {
     setSession(null);
     setPartykitHost(null);
     setMyChoice(null);
+    myChoiceRef.current = null;
     setOpponentLeft(false);
     setError('');
     matchingRef.current = false;
@@ -306,9 +309,12 @@ export function RPSGame() {
           const next = data.session as GameSession;
           if (next.status === 'playing') {
             setSession(next);
-            setState('choosing');
-            setMyChoice(null);
-            setOpponentLeft(false);
+            // ★ 이미 선택한 상태면 리셋하지 않음 (중간 broadcast와 동일한 보호)
+            if (!myChoiceRef.current) {
+              setState('choosing');
+              setMyChoice(null);
+              setOpponentLeft(false);
+            }
             return; // 폴링 종료
           }
           if (next.status === 'cancelled' || next.status === 'finished') {
@@ -331,11 +337,19 @@ export function RPSGame() {
     };
   }, [session?.id, session?.status, resetToMatching, abandonSession]);
 
+  // WebSocket 연결 대상 룸 ID: waiting(사전 연결) 또는 playing(활성 게임)
+  // session.id가 같으면 status가 waiting→playing으로 바뀌어도 재연결하지 않음
+  const wsRoomId =
+    session?.id && (session.status === 'waiting' || session.status === 'playing')
+      ? session.id
+      : null;
+
   // ═══════════════════════════════════════════
-  // 4. PartyKit WebSocket 연결 (playing 상태에서만)
+  // 4. PartyKit WebSocket 연결 (waiting 사전 연결 + playing 활성 게임)
+  // ★ waiting 중 사전 연결하여 매칭 즉시 감지 (폴링 지연 제거)
   // ═══════════════════════════════════════════
   useEffect(() => {
-    if (!session?.id || !player?.id || session.status !== 'playing') return;
+    if (!wsRoomId || !player?.id) return;
 
     const host = partykitHost ?? process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? null;
     if (!host) return;
@@ -347,7 +361,7 @@ export function RPSGame() {
     const socket = new PartySocket({
       host,
       party: PARTYKIT_PARTY,
-      room: session.id,
+      room: wsRoomId,
       maxRetries: 3, // 비정상 끊김 시 최대 3번 재연결
     });
     socketRef.current = socket;
@@ -375,7 +389,7 @@ export function RPSGame() {
           return;
         }
 
-        // session_update: 중간 업데이트 (한 명 선택 완료 등)
+        // session_update: 매칭 완료 알림 또는 중간 업데이트
         if (payload.type === 'session_update' && payload.session) {
           const updated = payload.session as GameSession;
           setSession(updated);
@@ -401,11 +415,15 @@ export function RPSGame() {
             return;
           }
 
-          // playing + round_result 없음 → choosing (중간 상태)
+          // playing + round_result 없음 → choosing 전환
+          // ★ 핵심 수정: myChoiceRef로 이미 선택한 상태인지 확인
+          //   - 매칭 완료 (waiting→playing): myChoice 없음 → choosing 전환 ✓
+          //   - 중간 업데이트 (한 명 선택): myChoice 있으면 리셋 안 함 ✓
           if (updated.status === 'playing' && !updated.round_result) {
-            setState('choosing');
-            setMyChoice(null);
-            setOpponentLeft(false);
+            if (!myChoiceRef.current) {
+              setState('choosing');
+              setOpponentLeft(false);
+            }
           }
         }
 
@@ -443,12 +461,16 @@ export function RPSGame() {
       onOpen();
     }
 
-    // ★ 연결 타임아웃: 10초 내에 연결 안 되면 재매칭
+    // ★ 연결 타임아웃: 10초 내에 연결 안 되면 복구
     const connectTimeout = setTimeout(() => {
       if (socketRef.current === socket && socket.readyState !== WebSocket.OPEN) {
         try { socket.close(); } catch { /* ignore */ }
         socketRef.current = null;
-        abandonAndRematch();
+        // matching 상태에서는 폴링이 fallback하므로 abandon 불필요
+        const currentState = stateRef.current;
+        if (currentState === 'choosing' || currentState === 'waiting') {
+          abandonAndRematch();
+        }
       }
     }, PARTYKIT_CONNECT_TIMEOUT_MS);
 
@@ -462,8 +484,7 @@ export function RPSGame() {
       setPartySocketReady(false);
     };
   }, [
-    session?.id,
-    session?.status,
+    wsRoomId,
     player?.id,
     partykitHost,
     closeSocket,
@@ -569,6 +590,7 @@ export function RPSGame() {
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!session || myChoice) return;
     setMyChoice(choice);
+    myChoiceRef.current = choice;
     setState('waiting');
     setError('');
 
@@ -587,8 +609,17 @@ export function RPSGame() {
           return;
         }
         if (data.error === 'Already chose') {
-          // 이중 제출 → 세션 정리 후 재매칭
-          await abandonAndRematch();
+          // ★ 이중 제출 (네트워크 지연 등) → 서버 반환 세션으로 동기화
+          // abandon 대신 현재 세션 유지 (상대 선택 대기 or 결과 표시)
+          if (data.session) {
+            const s = data.session as GameSession;
+            setSession(s);
+            if (s.status === 'finished' && s.round_result) {
+              closeSocket();
+              setState('result');
+            }
+            // 아직 진행 중이면 waiting 유지
+          }
           return;
         }
         // 기타 에러 → 매칭부터 다시
@@ -608,8 +639,9 @@ export function RPSGame() {
       setError('Failed to submit choice');
       setState('choosing');
       setMyChoice(null);
+      myChoiceRef.current = null;
     }
-  }, [session, myChoice, resetToMatching, abandonAndRematch, closeSocket]);
+  }, [session, myChoice, resetToMatching, closeSocket]);
 
   // ═══════════════════════════════════════════
   // 10. 다시 하기 (새 상대 매칭)

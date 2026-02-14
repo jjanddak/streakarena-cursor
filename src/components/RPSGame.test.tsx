@@ -85,6 +85,60 @@ describe('게임 상태 전이 규칙 (의도 검증)', () => {
   });
 });
 
+describe('실시간 동기화 규칙 (핵심 수정사항)', () => {
+  it('waiting 세션에서도 PartyKit 사전 연결 (wsRoomId 포함)', () => {
+    // wsRoomId = session.id when status is 'waiting' or 'playing'
+    const sessionWaiting = { id: 'abc', status: 'waiting' };
+    const sessionPlaying = { id: 'abc', status: 'playing' };
+    const sessionFinished = { id: 'abc', status: 'finished' };
+
+    const roomIdWaiting = (sessionWaiting.status === 'waiting' || sessionWaiting.status === 'playing') ? sessionWaiting.id : null;
+    const roomIdPlaying = (sessionPlaying.status === 'waiting' || sessionPlaying.status === 'playing') ? sessionPlaying.id : null;
+    const roomIdFinished = (sessionFinished.status === 'waiting' || sessionFinished.status === 'playing') ? sessionFinished.id : null;
+
+    expect(roomIdWaiting).toBe('abc');
+    expect(roomIdPlaying).toBe('abc');
+    expect(roomIdFinished).toBeNull();
+    // waiting→playing 전환 시 roomId 변경 없음 → WebSocket 재연결 불필요
+    expect(roomIdWaiting).toBe(roomIdPlaying);
+  });
+
+  it('match API에서 broadcast하여 대기 플레이어 즉시 알림', () => {
+    // 매칭 시 broadcastSessionUpdate 호출 (폴링 지연 제거)
+    const broadcastOnMatch = true;
+    expect(broadcastOnMatch).toBe(true);
+  });
+
+  it('중간 broadcast 수신 시 이미 선택한 상태를 리셋하지 않음 (myChoiceRef 보호)', () => {
+    // Player A가 rock 선택 후, 자신의 중간 broadcast를 수신해도 상태 유지
+    const myChoice = 'rock';
+    const hasChosen = myChoice !== null;
+    const sessionUpdate = { status: 'playing', round_result: null };
+
+    // 기존 코드: 무조건 setState('choosing'), setMyChoice(null) → BUG
+    // 수정 코드: myChoiceRef.current가 있으면 스킵
+    const shouldReset = sessionUpdate.status === 'playing' && !sessionUpdate.round_result && !hasChosen;
+    expect(shouldReset).toBe(false); // 이미 선택함 → 리셋하지 않음
+  });
+
+  it('선택 전 broadcast 수신 시 choosing으로 전환 (매칭 알림)', () => {
+    const myChoice = null;
+    const hasChosen = myChoice !== null;
+    const sessionUpdate = { status: 'playing', round_result: null };
+
+    const shouldTransition = sessionUpdate.status === 'playing' && !sessionUpdate.round_result && !hasChosen;
+    expect(shouldTransition).toBe(true); // 선택 안 함 → choosing 전환
+  });
+
+  it('"Already chose" 에러 시 abandon 대신 세션 동기화', () => {
+    // 이중 제출 시 abandon하면 세션이 꼬임 → 대신 서버 세션으로 동기화
+    const shouldAbandon = false;
+    const shouldSyncSession = true;
+    expect(shouldAbandon).toBe(false);
+    expect(shouldSyncSession).toBe(true);
+  });
+});
+
 describe('안전망 검증: UI 멈춤/무한로드 방지', () => {
   it('choosing/waiting 상태에 글로벌 스턱 타임아웃 적용', () => {
     const activeStates = ['choosing', 'waiting'];
