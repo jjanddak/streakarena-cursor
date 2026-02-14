@@ -41,3 +41,45 @@ export async function getWaitingCount(gameId: string): Promise<number> {
     return 0;
   }
 }
+
+export type RankingRow = {
+  id: string;
+  game_id: string;
+  player_id: string | null;
+  player_name: string;
+  country_flag: string | null;
+  streak_count: number;
+  achieved_at: string;
+};
+
+export async function getGameBySlug(slug: string): Promise<GameRow | null> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('games')
+      .select('id, name, slug, current_champion, order_index')
+      .eq('slug', slug)
+      .eq('is_active', true)
+      .single();
+    if (error || !data) return null;
+    return data as GameRow;
+  } catch {
+    return null;
+  }
+}
+
+export async function getRankingsByGameId(gameId: string, limit = 100): Promise<RankingRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('rankings')
+      .select('id, game_id, player_id, player_name, country_flag, streak_count, achieved_at')
+      .eq('game_id', gameId)
+      .order('streak_count', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []) as RankingRow[];
+  } catch {
+    return [];
+  }
+}
