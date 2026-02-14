@@ -130,6 +130,51 @@ async function createWaitingSession(
     .single();
 
   if (insertErr) throw insertErr;
+
+  // ★ 레이스 컨디션 대응: 내 세션 생성 직후, 다른 플레이어의 대기 세션이 있는지 다시 확인
+  // 두 플레이어가 동시에 매칭 요청 → 둘 다 대기 세션 생성 → 서로 못 찾는 문제 해결
+  const { data: otherWaiting } = await supabase
+    .from('game_sessions')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('status', 'waiting')
+    .neq('player1_id', playerId)
+    .is('player2_id', null)
+    .neq('id', newSession!.id) // 내 세션 제외
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (otherWaiting) {
+    // 다른 플레이어의 대기 세션 발견 → 합류 시도 (optimistic lock)
+    const { data: joined, error: joinErr } = await supabase
+      .from('game_sessions')
+      .update({
+        player2_id: playerId,
+        status: 'playing',
+        round_choices: {},
+        round_result: null,
+      })
+      .eq('id', otherWaiting.id)
+      .eq('status', 'waiting') // optimistic lock: 아직 waiting인 경우만
+      .select('*')
+      .single();
+
+    if (!joinErr && joined) {
+      // 내 대기 세션은 취소
+      await supabase
+        .from('game_sessions')
+        .update({ status: 'cancelled' })
+        .eq('id', newSession!.id);
+
+      return NextResponse.json({
+        session: joined,
+        partykitHost: process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? undefined,
+      });
+    }
+    // optimistic lock 실패 → 다른 사람이 이미 합류 → 내 대기 세션 유지
+  }
+
   return NextResponse.json({
     session: newSession,
     partykitHost: process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? undefined,

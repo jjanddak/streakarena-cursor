@@ -1,6 +1,7 @@
 import type * as Party from 'partykit/server';
 
 const SESSION_UPDATE_TYPE = 'session_update';
+const SESSION_END_TYPE = 'session_end';
 const PLAYER_LEFT_TYPE = 'player_left';
 
 type JoinPayload = { type: 'join'; playerId: string };
@@ -17,6 +18,9 @@ function verifySecret(req: Party.Request, env: Record<string, unknown>): boolean
 }
 
 export default class GameServer implements Party.Server {
+  /** 게임 종료 여부: true면 새 연결 거부, player_left 브로드캐스트 생략 */
+  private ended = false;
+
   constructor(readonly room: Party.Room) {}
 
   async onRequest(req: Party.Request): Promise<Response> {
@@ -28,10 +32,21 @@ export default class GameServer implements Party.Server {
     }
     try {
       const body = await req.json<{ type: string; session?: unknown }>();
+
       if (body.type === SESSION_UPDATE_TYPE && body.session != null) {
         this.room.broadcast(JSON.stringify(body));
         return new Response('OK', { status: 200 });
       }
+
+      if (body.type === SESSION_END_TYPE) {
+        this.ended = true;
+        // 클라이언트에 최종 세션 상태 전달 → 클라이언트가 소켓을 닫음
+        this.room.broadcast(
+          JSON.stringify({ type: SESSION_END_TYPE, session: body.session })
+        );
+        return new Response('OK', { status: 200 });
+      }
+
       return new Response('Bad request', { status: 400 });
     } catch {
       return new Response('Bad request', { status: 400 });
@@ -39,7 +54,11 @@ export default class GameServer implements Party.Server {
   }
 
   onConnect(connection: Party.Connection<{ playerId?: string }>): void {
-    // 클라이언트가 join 시 playerId 전송하면 state에 저장 (onMessage에서 처리)
+    // 이미 종료된 룸이면 즉시 연결 끊기
+    if (this.ended) {
+      connection.close(1000, 'Game already ended');
+      return;
+    }
   }
 
   onMessage(
@@ -58,6 +77,9 @@ export default class GameServer implements Party.Server {
   }
 
   onClose(connection: Party.Connection<{ playerId?: string }>): void {
+    // 게임이 이미 종료되었으면 player_left 브로드캐스트 생략
+    if (this.ended) return;
+
     const state = connection.state;
     const playerId = state?.playerId;
     if (playerId) {

@@ -52,9 +52,6 @@ CREATE TABLE game_sessions (
 CREATE INDEX idx_game_sessions_game_status ON game_sessions(game_id, status);
 CREATE INDEX idx_game_sessions_created ON game_sessions(created_at);
 
--- Enable Realtime for game_sessions
-ALTER PUBLICATION supabase_realtime ADD TABLE game_sessions;
-
 -- Rankings: per-game top streaks
 CREATE TABLE rankings (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),

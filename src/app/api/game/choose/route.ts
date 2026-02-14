@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionId } from '@/lib/session';
-import { broadcastSessionUpdate } from '@/lib/partykit';
+import { broadcastSessionUpdate, broadcastSessionEnd } from '@/lib/partykit';
 import { VALID_CHOICES, determineWinner } from '@/lib/rps';
 import type { RPSChoice } from '@/lib/rps';
 
 /**
  * POST /api/game/choose
  * Body: { sessionId: string, choice: 'rock' | 'paper' | 'scissors' }
- * Submits a player's RPS choice.
- * When both choices are in, resolves the round.
+ *
+ * 핵심 변경: 무승부(draw)도 게임 종료(finished) 처리.
+ * 모든 결과(승/패/무승부)에서 세션이 종료되므로
+ * 클라이언트는 결과 확인 후 새 매칭을 시작해야 함.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
     const choiceKey = isPlayer1 ? 'player1' : 'player2';
 
     if (existingChoices[choiceKey]) {
-      // 이미 선택한 상태(이중 클릭/세션 동기화 지연) → 최신 세션 반환해 클라이언트가 결과 화면 등으로 동기화
+      // 이미 선택한 상태(이중 클릭/세션 동기화 지연) → 최신 세션 반환
       const { data: currentSession } = await supabase
         .from('game_sessions')
         .select('*')
@@ -90,9 +92,9 @@ export async function POST(req: NextRequest) {
       } else if (result === 'player2') {
         winnerId = session.player2_id;
         newStreak = 1;
-      }
-      if (result === 'draw') {
-        newStreak = 0; // 무승부 시 연승 초기화
+      } else {
+        // 무승부: 연승 초기화
+        newStreak = 0;
       }
 
       const roundResult = {
@@ -101,17 +103,17 @@ export async function POST(req: NextRequest) {
         player2_choice: updatedChoices.player2,
       };
 
+      // ★ 핵심 변경: 모든 결과(승/패/무승부)에서 세션 종료
       const updateData: Record<string, unknown> = {
-        round_choices: result === 'draw' ? {} : updatedChoices, // 무승부 시 다음 라운드를 위해 비우기
+        round_choices: updatedChoices,
         round_result: roundResult,
         current_streak: newStreak,
+        status: 'finished',
       };
 
-      if (result !== 'draw') {
+      if (winnerId) {
         updateData.winner_id = winnerId;
-        updateData.status = 'finished';
       }
-      // If draw, keep status='playing' so they can choose again
 
       const { data: updated, error: updateErr } = await supabase
         .from('game_sessions')
@@ -183,11 +185,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      await broadcastSessionUpdate(gameSessionId, updated as Record<string, unknown>);
+      // ★ session_end 브로드캐스트: PartyKit 룸 종료 신호
+      await broadcastSessionEnd(gameSessionId, updated as Record<string, unknown>);
       return NextResponse.json({ session: updated });
     }
 
-    // Only one choice so far - update and wait
+    // Only one choice so far - update and wait (중간 업데이트)
     const { data: updated, error: updateErr } = await supabase
       .from('game_sessions')
       .update({ round_choices: updatedChoices })
