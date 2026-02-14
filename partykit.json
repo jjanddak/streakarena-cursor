@@ -1,0 +1,7 @@
+{
+  "name": "streakarena",
+  "main": "partykit/game.ts",
+  "parties": {
+    "game": "partykit/game.ts"
+  }
+}
