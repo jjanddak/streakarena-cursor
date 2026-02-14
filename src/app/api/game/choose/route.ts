@@ -69,7 +69,16 @@ export async function POST(req: NextRequest) {
     const choiceKey = isPlayer1 ? 'player1' : 'player2';
 
     if (existingChoices[choiceKey]) {
-      return NextResponse.json({ error: 'Already chose' }, { status: 400 });
+      // 이미 선택한 상태(이중 클릭/세션 동기화 지연) → 최신 세션 반환해 클라이언트가 결과 화면 등으로 동기화
+      const { data: currentSession } = await supabase
+        .from('game_sessions')
+        .select('*')
+        .eq('id', gameSessionId)
+        .single();
+      return NextResponse.json(
+        { error: 'Already chose', session: currentSession ?? undefined },
+        { status: 400 }
+      );
     }
 
     const updatedChoices = { ...existingChoices, [choiceKey]: choice };
@@ -87,11 +96,13 @@ export async function POST(req: NextRequest) {
       if (result === 'player1') {
         winnerId = session.player1_id;
         newStreak += 1;
-      } else if (result === 'player2') {
+      } else       if (result === 'player2') {
         winnerId = session.player2_id;
         newStreak = 1;
       }
-      // draw → winnerId stays null, streak unchanged
+      if (result === 'draw') {
+        newStreak = 0; // 무승부 시 연승 초기화
+      }
 
       const roundResult = {
         winner: result,
@@ -120,7 +131,7 @@ export async function POST(req: NextRequest) {
 
       if (updateErr) throw updateErr;
 
-      // If there's a winner, record to rankings
+      // If there's a winner, record to rankings and update current_champion
       if (result !== 'draw' && winnerId) {
         const { data: winnerPlayer } = await supabase
           .from('players')
@@ -155,6 +166,28 @@ export async function POST(req: NextRequest) {
               country_flag: winnerPlayer.country_flag,
               streak_count: newStreak,
             });
+          }
+
+          // Update games.current_champion to the current top for this game
+          const { data: topRank } = await supabase
+            .from('rankings')
+            .select('player_name, country_flag, streak_count')
+            .eq('game_id', session.game_id)
+            .order('streak_count', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (topRank) {
+            await supabase
+              .from('games')
+              .update({
+                current_champion: {
+                  player_name: topRank.player_name,
+                  streak: topRank.streak_count,
+                  country_flag: topRank.country_flag ?? undefined,
+                },
+              })
+              .eq('id', session.game_id);
           }
         }
       }

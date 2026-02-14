@@ -27,6 +27,7 @@ type GameSession = {
     player1_choice: string;
     player2_choice: string;
   } | null;
+  updated_at?: string;
 };
 
 type Choice = 'rock' | 'paper' | 'scissors';
@@ -63,6 +64,29 @@ export function RPSGame() {
       .catch(() => {});
   }, []);
 
+  // 세션 취소 후 매칭 화면으로 (abandon 호출)
+  const abandonAndRematch = useCallback(async () => {
+    if (!session?.id) {
+      setSession(null);
+      setMyChoice(null);
+      setState('matching');
+      setError('');
+      return;
+    }
+    try {
+      await fetch('/api/game/session/abandon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id }),
+      });
+    } finally {
+      setSession(null);
+      setMyChoice(null);
+      setState('matching');
+      setError('');
+    }
+  }, [session?.id]);
+
   // Auto-join matchmaking when state is 'matching'
   useEffect(() => {
     if (state !== 'matching' || !player) return;
@@ -95,6 +119,28 @@ export function RPSGame() {
     return () => { cancelled = true; };
   }, [state, player]);
 
+  // 새로고침 후 복귀: playing인데 상대 선택이 없고 오래됐으면 취소 후 재매칭
+  useEffect(() => {
+    if (!session?.id || session.status !== 'playing' || session.round_result) return;
+    const choices = session.round_choices || {};
+    const keys = Object.keys(choices);
+    if (keys.length !== 1) return; // 둘 다 선택했거나 아무도 안 했으면 스킵
+    const updatedAt = session.updated_at ? new Date(session.updated_at).getTime() : 0;
+    if (Date.now() - updatedAt < 90_000) return; // 90초 미만이면 대기
+    abandonAndRematch();
+  }, [session?.id, session?.status, session?.round_result, session?.round_choices, session?.updated_at, abandonAndRematch]);
+
+  // 상대 대기 타임아웃: 내가 선택한 뒤 90초 동안 상대가 없으면 취소 후 재매칭
+  useEffect(() => {
+    if (state !== 'waiting' || !session?.id || !myChoice) return;
+    const choices = session.round_choices || {};
+    const myKey = session.player1_id === player?.id ? 'player1' : 'player2';
+    if (choices.player1 && choices.player2) return; // 이미 둘 다 선택함
+    if (!choices[myKey]) return;
+    const timer = setTimeout(() => abandonAndRematch(), 90_000);
+    return () => clearTimeout(timer);
+  }, [state, session?.id, session?.round_choices, session?.player1_id, myChoice, player?.id, abandonAndRematch]);
+
   // Realtime subscription for game session changes
   useEffect(() => {
     if (!session?.id) return;
@@ -113,6 +159,15 @@ export function RPSGame() {
         (payload) => {
           const updated = payload.new as GameSession;
           setSession(updated);
+
+          if (updated.status === 'cancelled') {
+            // 상대 이탈/취소 → 매칭 화면으로
+            setSession(null);
+            setMyChoice(null);
+            setState('matching');
+            setError('');
+            return;
+          }
 
           if (updated.status === 'playing' && !updated.round_result) {
             // Matched or draw reset → choosing
@@ -176,17 +231,41 @@ export function RPSGame() {
     if (!session || myChoice) return;
     setMyChoice(choice);
     setState('waiting');
+    setError('');
 
     try {
-      await fetch('/api/game/choose', {
+      const res = await fetch('/api/game/choose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: session.id, choice }),
       });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error === 'Already chose' && data.session) {
+          setSession(data.session as GameSession);
+          if (data.session.round_result) {
+            setState('result');
+          } else {
+            setState('choosing');
+            const myKey = data.session.player1_id === player?.id ? 'player1' : 'player2';
+            setMyChoice((data.session.round_choices?.[myKey] as Choice) ?? null);
+          }
+          return;
+        }
+        setError(data.error || 'Failed to submit choice');
+        setState('choosing');
+        setMyChoice(null);
+        return;
+      }
+
+      if (data.session) setSession(data.session as GameSession);
     } catch {
       setError('Failed to submit choice');
+      setState('choosing');
+      setMyChoice(null);
     }
-  }, [session, myChoice]);
+  }, [session, myChoice, player?.id]);
 
   const handlePlayAgain = useCallback(() => {
     setSession(null);
