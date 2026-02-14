@@ -1,0 +1,69 @@
+{
+  "common": {
+    "play": "Play",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "back": "Back",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save"
+  },
+  "nav": {
+    "home": "Home",
+    "rankings": "Rankings",
+    "submitGame": "Submit Game",
+    "admin": "Admin"
+  },
+  "home": {
+    "title": "StreakArena.io",
+    "subtitle": "Global Streak Challenge",
+    "currentChampion": "Current Champion",
+    "noChampion": "No records yet",
+    "waitingCount": "{count} waiting",
+    "pickNickname": "Enter your nickname",
+    "nicknamePlaceholder": "Nickname (2-20 chars)",
+    "nicknameRequired": "Nickname required to start"
+  },
+  "game": {
+    "matching": "Finding opponent...",
+    "yourChoice": "Choose",
+    "rock": "Rock",
+    "paper": "Paper",
+    "scissors": "Scissors",
+    "countdown": "{n}",
+    "youWin": "You win!",
+    "youLose": "You lose",
+    "draw": "Draw",
+    "streak": "Streak {count}",
+    "playAgain": "Play again",
+    "opponentLeft": "Opponent left"
+  },
+  "rankings": {
+    "title": "Rankings",
+    "top100": "Top 100",
+    "rank": "Rank",
+    "player": "Player",
+    "streak": "Streak",
+    "achieved": "Achieved",
+    "filterByCountry": "Filter by country"
+  },
+  "submit": {
+    "title": "Submit Game",
+    "description": "Submit a new game and share with the community.",
+    "formTitle": "Game title",
+    "formDescription": "Description",
+    "htmlFile": "HTML file",
+    "submitSuccess": "Submitted. We'll get back to you after review.",
+    "submitError": "Submission failed."
+  },
+  "admin": {
+    "title": "Game Requests",
+    "pending": "Pending",
+    "approve": "Approve",
+    "reject": "Reject",
+    "noPending": "No pending requests.",
+    "unauthorized": "Unauthorized."
+  }
+}

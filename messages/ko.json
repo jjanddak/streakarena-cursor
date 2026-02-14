@@ -1,0 +1,69 @@
+{
+  "common": {
+    "play": "플레이",
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "retry": "다시 시도",
+    "back": "뒤로",
+    "submit": "제출",
+    "cancel": "취소",
+    "close": "닫기",
+    "save": "저장"
+  },
+  "nav": {
+    "home": "홈",
+    "rankings": "랭킹",
+    "submitGame": "게임 제출",
+    "admin": "관리자"
+  },
+  "home": {
+    "title": "StreakArena.io",
+    "subtitle": "글로벌 연승 도전",
+    "currentChampion": "현재 챔피언",
+    "noChampion": "아직 기록 없음",
+    "waitingCount": "대기 중 {count}명",
+    "pickNickname": "닉네임을 입력하세요",
+    "nicknamePlaceholder": "닉네임 (2~20자)",
+    "nicknameRequired": "게임을 시작하려면 닉네임이 필요합니다"
+  },
+  "game": {
+    "matching": "상대 찾는 중...",
+    "yourChoice": "선택하세요",
+    "rock": "바위",
+    "paper": "보",
+    "scissors": "가위",
+    "countdown": "{n}",
+    "youWin": "승리!",
+    "youLose": "패배",
+    "draw": "무승부",
+    "streak": "연승 {count}",
+    "playAgain": "다시 하기",
+    "opponentLeft": "상대가 나갔습니다"
+  },
+  "rankings": {
+    "title": "랭킹",
+    "top100": "Top 100",
+    "rank": "순위",
+    "player": "플레이어",
+    "streak": "연승",
+    "achieved": "달성일",
+    "filterByCountry": "국가별 필터"
+  },
+  "submit": {
+    "title": "게임 제출",
+    "description": "새 게임을 제출하고 커뮤니티와 공유하세요.",
+    "formTitle": "게임 제목",
+    "formDescription": "설명",
+    "htmlFile": "HTML 파일",
+    "submitSuccess": "제출되었습니다. 검토 후 연락드리겠습니다.",
+    "submitError": "제출에 실패했습니다."
+  },
+  "admin": {
+    "title": "게임 요청 관리",
+    "pending": "대기 중",
+    "approve": "승인",
+    "reject": "반려",
+    "noPending": "대기 중인 요청이 없습니다.",
+    "unauthorized": "접근 권한이 없습니다."
+  }
+}
