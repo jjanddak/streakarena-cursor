@@ -63,7 +63,10 @@
     "draw": "Draw",
     "streak": "Streak {count}",
     "playAgain": "Play again",
-    "opponentLeft": "Opponent left"
+    "opponentLeft": "Opponent left",
+    "connectingPartykit": "Connecting to real-time server…",
+    "partykitNotConfigured": "Real-time server is not configured. Run the PartyKit server and set NEXT_PUBLIC_PARTYKIT_HOST.",
+    "partykitServerRequired": "PartyKit server must be running. (npm run dev:partykit)"
   },
   "rankings": {
     "title": "Rankings",

@@ -63,7 +63,10 @@
     "draw": "무승부",
     "streak": "연승 {count}",
     "playAgain": "다시 하기",
-    "opponentLeft": "상대가 나갔습니다"
+    "opponentLeft": "상대가 나갔습니다",
+    "connectingPartykit": "실시간 서버 연결 중…",
+    "partykitNotConfigured": "실시간 서버가 설정되지 않았습니다. PartyKit 서버를 실행하고 NEXT_PUBLIC_PARTYKIT_HOST를 설정하세요.",
+    "partykitServerRequired": "PartyKit 서버가 켜져 있어야 합니다. (npm run dev:partykit)"
   },
   "rankings": {
     "title": "랭킹",
