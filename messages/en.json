@@ -72,16 +72,21 @@
     "player": "Player",
     "streak": "Streak",
     "achieved": "Achieved",
-    "filterByCountry": "Filter by country"
+    "filterByCountry": "Filter by country",
+    "noRecordsYet": "No records yet. Be the first to set a streak!"
   },
   "submit": {
     "title": "Submit Game",
     "description": "Submit a new game and share with the community.",
     "formTitle": "Game title",
+    "formTitlePlaceholder": "Enter game name",
     "formDescription": "Description",
-    "htmlFile": "HTML file",
+    "formDescriptionPlaceholder": "Brief description of the game (optional)",
+    "htmlFile": "HTML file URL",
+    "htmlFileUrlPlaceholder": "https://... (optional)",
     "submitSuccess": "Submitted. We'll get back to you after review.",
-    "submitError": "Submission failed."
+    "submitError": "Submission failed.",
+    "formComingSoon": "Game submission form will be implemented in the next phase."
   },
   "admin": {
     "title": "Game Requests",
@@ -89,7 +94,14 @@
     "approve": "Approve",
     "reject": "Reject",
     "noPending": "No pending requests.",
-    "unauthorized": "Unauthorized."
+    "unauthorized": "Unauthorized.",
+    "unlock": "Unlock",
+    "requestTitle": "Title",
+    "requestDescription": "Description",
+    "requestUrl": "URL",
+    "requestDate": "Submitted",
+    "actions": "Actions",
+    "link": "Link"
   },
   "footer": {
     "copyright": "© 2026 StreakArena. All rights reserved."

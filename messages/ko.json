@@ -72,16 +72,21 @@
     "player": "플레이어",
     "streak": "연승",
     "achieved": "달성일",
-    "filterByCountry": "국가별 필터"
+    "filterByCountry": "국가별 필터",
+    "noRecordsYet": "아직 기록이 없습니다. 첫 연승을 세워 보세요!"
   },
   "submit": {
     "title": "게임 제출",
     "description": "새 게임을 제출하고 커뮤니티와 공유하세요.",
     "formTitle": "게임 제목",
+    "formTitlePlaceholder": "게임 이름을 입력하세요",
     "formDescription": "설명",
-    "htmlFile": "HTML 파일",
+    "formDescriptionPlaceholder": "게임에 대한 간단한 설명 (선택)",
+    "htmlFile": "HTML 파일 URL",
+    "htmlFileUrlPlaceholder": "https://... (선택)",
     "submitSuccess": "제출되었습니다. 검토 후 연락드리겠습니다.",
-    "submitError": "제출에 실패했습니다."
+    "submitError": "제출에 실패했습니다.",
+    "formComingSoon": "게임 제출 폼은 다음 단계에서 구현됩니다."
   },
   "admin": {
     "title": "게임 요청 관리",
@@ -89,7 +94,14 @@
     "approve": "승인",
     "reject": "반려",
     "noPending": "대기 중인 요청이 없습니다.",
-    "unauthorized": "접근 권한이 없습니다."
+    "unauthorized": "접근 권한이 없습니다.",
+    "unlock": "확인",
+    "requestTitle": "제목",
+    "requestDescription": "설명",
+    "requestUrl": "URL",
+    "requestDate": "제출일",
+    "actions": "작업",
+    "link": "링크"
   },
   "footer": {
     "copyright": "© 2026 StreakArena. All rights reserved."
