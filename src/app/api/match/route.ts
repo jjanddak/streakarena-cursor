@@ -107,18 +107,21 @@ async function createWaitingSession(
   gameId: string,
   playerId: string
 ) {
-  // 이전에 이긴 세션의 연승을 가져와서 이어받기
-  const { data: lastWin } = await supabase
+  // 가장 최근 종료 세션 기준으로 연승 이어받기 여부 결정
+  // - 직전 결과가 승리면 current_streak 유지
+  // - 직전 결과가 무승부/패배면 0부터 시작
+  const { data: lastFinished } = await supabase
     .from('game_sessions')
-    .select('current_streak')
+    .select('winner_id, current_streak')
     .eq('game_id', gameId)
-    .eq('winner_id', playerId)
     .eq('status', 'finished')
+    .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
     .order('updated_at', { ascending: false })
     .limit(1)
     .single();
 
-  const incomingStreak = lastWin?.current_streak ?? 0;
+  const incomingStreak =
+    lastFinished && lastFinished.winner_id === playerId ? (lastFinished.current_streak ?? 0) : 0;
 
   const { data: newSession, error: insertErr } = await supabase
     .from('game_sessions')
